@@ -43,6 +43,8 @@ func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
+	w.WriteHeader(resp.StatusCode)
+
 	if _, err := io.Copy(w, resp.Body); err != nil {
 		http.Error(w, fmt.Sprintf("failed to copy response: %v", err), http.StatusInternalServerError)
 		return
