@@ -16,7 +16,7 @@ func (p *ProxyServer) logf(f string, args ...interface{}) {
 	if p.Logger == nil {
 		log.Printf(f, args...)
 	} else {
-		p.Logger.Panicf(f, args...)
+		p.Logger.Printf(f, args...)
 	}
 }
 
