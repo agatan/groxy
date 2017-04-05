@@ -1,8 +1,11 @@
 package groxy
 
 import (
+	"bufio"
+	"crypto/tls"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -11,13 +14,17 @@ import (
 )
 
 type ProxyServer struct {
-	Logger  *log.Logger
-	Handler http.Handler
-	client  *http.Client
+	Logger         *log.Logger
+	Handler        http.Handler
+	ConnectHandler func(p *ProxyServer, w http.ResponseWriter, r *http.Request)
+	client         *http.Client
 }
 
 func New() *ProxyServer {
 	return &ProxyServer{
+		ConnectHandler: func(p *ProxyServer, w http.ResponseWriter, r *http.Request) {
+			p.proxyHTTPS(w, r)
+		},
 		client: &http.Client{
 			CheckRedirect: func(r *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
@@ -59,7 +66,7 @@ func (p *ProxyServer) pipeConn(dst, src *net.TCPConn) {
 	src.CloseRead()
 }
 
-func (p *ProxyServer) handleHTTPS(w http.ResponseWriter, r *http.Request) {
+func (p *ProxyServer) proxyHTTPS(w http.ResponseWriter, r *http.Request) {
 	hij, ok := w.(http.Hijacker)
 	if !ok {
 		http.Error(w, "cannot hijack https request", http.StatusInternalServerError)
@@ -87,10 +94,58 @@ func (p *ProxyServer) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 	p.logf("accept CONNECT to %s", r.URL.Host)
 }
 
+func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
+	hij, ok := w.(http.Hijacker)
+	if !ok {
+		http.Error(w, "cannot hijack https request", http.StatusInternalServerError)
+		return
+	}
+	cliConn, _, err := hij.Hijack()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to hijack https connection: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	cliConn.Write([]byte("HTTP/1.0 200 OK\r\n\r\n"))
+	tlsConfig := &tls.Config{InsecureSkipVerify: true}
+	rawCli := tls.Server(cliConn, tlsConfig)
+	defer rawCli.Close()
+	cliReader := bufio.NewReader(rawCli)
+	mitmTr := &http.Transport{TLSClientConfig: tlsConfig, Proxy: http.ProxyFromEnvironment}
+	for {
+		req, err := http.ReadRequest(cliReader)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			p.logf("failed to read TLS request: %v", err)
+			break
+		}
+		resp, err := mitmTr.RoundTrip(req)
+		if err != nil {
+			p.logf("failed to read TLS response: %v", err)
+			break
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			p.logf("failed to read respnse body: %v", err)
+			break
+		}
+		if _, err := io.WriteString(rawCli, "HTTP/1.1"+resp.Status+"\r\n"); err != nil {
+			p.logf("failed to write TLS response: %v", err)
+			break
+		}
+		resp.Header.Write(rawCli)
+		rawCli.Write([]byte("\r\n"))
+		rawCli.Write(body)
+	}
+}
+
 func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.logf("received request: %#v", r)
 	if r.Method == "CONNECT" {
-		p.handleHTTPS(w, r)
+		p.ConnectHandler(p, w, r)
 		return
 	}
 	if !r.URL.IsAbs() {
