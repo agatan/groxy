@@ -3,12 +3,24 @@ package groxy
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 )
 
-type ProxyServer struct{}
+type ProxyServer struct {
+	Logger *log.Logger
+}
+
+func (p *ProxyServer) logf(f string, args ...interface{}) {
+	if p.Logger == nil {
+		log.Printf(f, args...)
+	} else {
+		p.Logger.Panicf(f, args...)
+	}
+}
 
 func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	p.logf("received request: %#v", r)
 	proxyr, err := http.NewRequest(r.Method, r.URL.String(), r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("broken request format: %v", err), http.StatusBadRequest)
