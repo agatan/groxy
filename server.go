@@ -5,6 +5,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
 type ProxyServer struct {
@@ -31,6 +33,23 @@ func (p *ProxyServer) logf(f string, args ...interface{}) {
 	}
 }
 
+func copyResponse(dst http.ResponseWriter, src *http.Response) error {
+	dstHeader := dst.Header()
+	for k := range dstHeader {
+		dstHeader.Del(k)
+	}
+	for k, vs := range src.Header {
+		for _, v := range vs {
+			dstHeader.Add(k, v)
+		}
+	}
+	dst.WriteHeader(src.StatusCode)
+	if _, err := io.Copy(dst, src.Body); err != nil {
+		return errors.Wrap(err, "failed to copy response body")
+	}
+	return nil
+}
+
 func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.logf("received request: %#v", r)
 	if !r.URL.IsAbs() {
@@ -54,10 +73,8 @@ func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	w.WriteHeader(resp.StatusCode)
-
-	if _, err := io.Copy(w, resp.Body); err != nil {
-		http.Error(w, fmt.Sprintf("failed to copy response: %v", err), http.StatusInternalServerError)
+	if err := copyResponse(w, resp); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
