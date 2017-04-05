@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	proxy := new(groxy.ProxyServer)
+	proxy := groxy.New()
 	if err := http.ListenAndServe(":8888", proxy); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

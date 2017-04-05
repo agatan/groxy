@@ -10,6 +10,17 @@ import (
 type ProxyServer struct {
 	Logger  *log.Logger
 	Handler http.Handler
+	client  *http.Client
+}
+
+func New() *ProxyServer {
+	return &ProxyServer{
+		client: &http.Client{
+			CheckRedirect: func(r *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+	}
 }
 
 func (p *ProxyServer) logf(f string, args ...interface{}) {
@@ -36,7 +47,7 @@ func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := http.DefaultClient.Do(proxyr)
+	resp, err := p.client.Do(proxyr)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("ruest failed: %v", err), http.StatusBadGateway)
 		return
