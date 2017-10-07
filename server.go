@@ -16,6 +16,7 @@ type HTTPSAction int
 
 const (
 	HTTPSActionProxy HTTPSAction = iota
+	HTTPSActionRefuse
 	HTTPSActionMITM
 )
 
@@ -142,10 +143,12 @@ func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
 
 func (p *ProxyServer) connectHandler(w http.ResponseWriter, r *http.Request) {
 	switch p.HTTPSAction {
-	case HTTPSActionMITM:
-		p.mitmHTTPS(w, r)
 	case HTTPSActionProxy:
 		p.proxyHTTPS(w, r)
+	case HTTPSActionRefuse:
+		http.Error(w, "HTTPS request is not allowed", http.StatusBadRequest)
+	case HTTPSActionMITM:
+		p.mitmHTTPS(w, r)
 	default:
 		http.Error(w, fmt.Sprintf("unknown HTTPS action: %v", p.HTTPSAction), http.StatusInternalServerError)
 	}
