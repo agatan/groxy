@@ -1,6 +1,7 @@
 package groxy
 
 import (
+	"crypto/tls"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestHTTPSManInTheMiddle(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		body, _ := ioutil.ReadAll(r.Body)
 		w.Write(body)
@@ -26,7 +27,12 @@ func TestHTTPSManInTheMiddle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyurl)}}
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy:           http.ProxyURL(proxyurl),
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
 	body := `{"message": "Hello, world!"}`
 	resp, err := client.Post(ts.URL+"/post", "application/json", strings.NewReader(body))
 	if err != nil {
