@@ -23,7 +23,7 @@ type ProxyServer struct {
 func New() *ProxyServer {
 	return &ProxyServer{
 		ConnectHandler: func(p *ProxyServer, w http.ResponseWriter, r *http.Request) {
-			p.proxyHTTPS(w, r)
+			p.mitmHTTPS(w, r)
 		},
 		client: &http.Client{
 			CheckRedirect: func(r *http.Request, via []*http.Request) error {
@@ -107,7 +107,7 @@ func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cliConn.Write([]byte("HTTP/1.0 200 OK\r\n\r\n"))
-	tlsConfig := &tls.Config{InsecureSkipVerify: true}
+	tlsConfig := &tls.Config{InsecureSkipVerify: true, Certificates: []tls.Certificate{GroxyCa}}
 	rawCli := tls.Server(cliConn, tlsConfig)
 	defer rawCli.Close()
 	cliReader := bufio.NewReader(rawCli)
@@ -121,6 +121,8 @@ func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
 			p.logf("failed to read TLS request: %v", err)
 			break
 		}
+		req.URL.Host = req.Host
+		req.URL.Scheme = "https"
 		resp, err := mitmTr.RoundTrip(req)
 		if err != nil {
 			p.logf("failed to read TLS response: %v", err)
