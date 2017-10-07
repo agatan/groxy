@@ -130,7 +130,7 @@ func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
 			p.Logger.Print("failed to read respnse body: ", err)
 			break
 		}
-		if _, err := io.WriteString(rawCli, "HTTP/1.1"+resp.Status+"\r\n"); err != nil {
+		if _, err := io.WriteString(rawCli, "HTTP/1.1 "+resp.Status+"\r\n"); err != nil {
 			p.Logger.Print("failed to write TLS response: ", err)
 			break
 		}
