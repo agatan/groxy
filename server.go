@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 
@@ -20,27 +21,28 @@ const (
 )
 
 type ProxyServer struct {
-	logger                 Logger
+	Logger                 *log.Logger
 	NonProxyRequestHandler http.Handler
 	HTTPSAction            HTTPSAction
 	client                 *http.Client
 }
 
-func New(options ...Option) *ProxyServer {
-	p := &ProxyServer{
+func New() *ProxyServer {
+	return &ProxyServer{
 		client: &http.Client{
 			CheckRedirect: func(r *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
 		},
 	}
-	for _, option := range options {
-		option(p)
+}
+
+func (p *ProxyServer) logf(f string, args ...interface{}) {
+	if p.Logger == nil {
+		log.Printf(f, args...)
+	} else {
+		p.Logger.Printf(f, args...)
 	}
-	if p.logger == nil {
-		p.logger = nullLogger{}
-	}
-	return p
 }
 
 func copyResponse(dst http.ResponseWriter, src *http.Response) error {
@@ -62,7 +64,7 @@ func copyResponse(dst http.ResponseWriter, src *http.Response) error {
 
 func (p *ProxyServer) pipeConn(dst, src *net.TCPConn) {
 	if _, err := io.Copy(dst, src); err != nil {
-		p.logger.Print("failed to pipe connections: ", err)
+		p.logf("failed to pipe connections: %v", err)
 	}
 	dst.CloseWrite()
 	src.CloseRead()
@@ -93,7 +95,7 @@ func (p *ProxyServer) proxyHTTPS(w http.ResponseWriter, r *http.Request) {
 	go p.pipeConn(dstTCPConn, cliTCPConn)
 	go p.pipeConn(cliTCPConn, dstTCPConn)
 
-	p.logger.Print("accept CONNECT to ", r.URL.Host)
+	p.logf("accept CONNECT to %s", r.URL.Host)
 }
 
 func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
@@ -120,24 +122,24 @@ func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
 			if err == io.EOF {
 				break
 			}
-			p.logger.Print("failed to read TLS request: ", err)
+			p.logf("failed to read TLS request: %v", err)
 			break
 		}
 		req.URL.Host = req.Host
 		req.URL.Scheme = "https"
 		resp, err := mitmTr.RoundTrip(req)
 		if err != nil {
-			p.logger.Print("failed to read TLS response: ", err)
+			p.logf("failed to read TLS response: %v", err)
 			break
 		}
 		body, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			p.logger.Print("failed to read respnse body: ", err)
+			p.logf("failed to read respnse body: %v", err)
 			break
 		}
 		if _, err := io.WriteString(rawCli, "HTTP/1.1"+resp.Status+"\r\n"); err != nil {
-			p.logger.Print("failed to write TLS response: ", err)
+			p.logf("failed to write TLS response: %v", err)
 			break
 		}
 		resp.Header.Write(rawCli)
@@ -158,7 +160,7 @@ func (p *ProxyServer) connectHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	p.logger.Print("received request: ", r)
+	p.logf("received request: %#v", r)
 	if r.Method == "CONNECT" {
 		p.connectHandler(w, r)
 		return
