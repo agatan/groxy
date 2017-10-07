@@ -14,10 +14,10 @@ import (
 )
 
 type ProxyServer struct {
-	Logger         *log.Logger
-	Handler        http.Handler
-	ConnectHandler func(p *ProxyServer, w http.ResponseWriter, r *http.Request)
-	client         *http.Client
+	Logger                 *log.Logger
+	NonProxyRequestHandler http.Handler
+	ConnectHandler         func(p *ProxyServer, w http.ResponseWriter, r *http.Request)
+	client                 *http.Client
 }
 
 func New() *ProxyServer {
@@ -151,10 +151,10 @@ func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !r.URL.IsAbs() {
-		if p.Handler == nil {
+		if p.NonProxyRequestHandler == nil {
 			http.Error(w, "cannot handle non-proxy requests", http.StatusBadRequest)
 		} else {
-			p.Handler.ServeHTTP(w, r)
+			p.NonProxyRequestHandler.ServeHTTP(w, r)
 		}
 		return
 	}
