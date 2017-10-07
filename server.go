@@ -13,18 +13,22 @@ import (
 	"github.com/pkg/errors"
 )
 
+type HTTPSAction int
+
+const (
+	HTTPSActionProxy HTTPSAction = iota
+	HTTPSActionMITM
+)
+
 type ProxyServer struct {
 	Logger                 *log.Logger
 	NonProxyRequestHandler http.Handler
-	ConnectHandler         func(p *ProxyServer, w http.ResponseWriter, r *http.Request)
+	HTTPSAction            HTTPSAction
 	client                 *http.Client
 }
 
 func New() *ProxyServer {
 	return &ProxyServer{
-		ConnectHandler: func(p *ProxyServer, w http.ResponseWriter, r *http.Request) {
-			p.mitmHTTPS(w, r)
-		},
 		client: &http.Client{
 			CheckRedirect: func(r *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
@@ -144,10 +148,21 @@ func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (p *ProxyServer) connectHandler(w http.ResponseWriter, r *http.Request) {
+	switch p.HTTPSAction {
+	case HTTPSActionMITM:
+		p.mitmHTTPS(w, r)
+	case HTTPSActionProxy:
+		p.proxyHTTPS(w, r)
+	default:
+		http.Error(w, fmt.Sprintf("unknown HTTPS action: %v", p.HTTPSAction), http.StatusInternalServerError)
+	}
+}
+
 func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.logf("received request: %#v", r)
 	if r.Method == "CONNECT" {
-		p.ConnectHandler(p, w, r)
+		p.connectHandler(w, r)
 		return
 	}
 	if !r.URL.IsAbs() {
