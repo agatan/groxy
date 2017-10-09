@@ -4,11 +4,11 @@ import (
 	"crypto/tls"
 )
 
-var GroxyCa tls.Certificate
+var groxyCa tls.Certificate
 
 func init() {
 	var err error
-	GroxyCa, err = tls.X509KeyPair(caCert, caKey)
+	groxyCa, err = tls.X509KeyPair(caCert, caKey)
 	if err != nil {
 		panic(err)
 	}

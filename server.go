@@ -116,7 +116,7 @@ func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cliConn.Write([]byte("HTTP/1.0 200 OK\r\n\r\n"))
-	tlsConfig := &tls.Config{InsecureSkipVerify: true, Certificates: []tls.Certificate{GroxyCa}}
+	tlsConfig := &tls.Config{InsecureSkipVerify: true, Certificates: []tls.Certificate{groxyCa}}
 	rawCli := tls.Server(cliConn, tlsConfig)
 	defer rawCli.Close()
 	cliReader := bufio.NewReader(rawCli)
