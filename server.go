@@ -25,6 +25,7 @@ type ProxyServer struct {
 	NonProxyRequestHandler http.Handler
 	HTTPSAction            HTTPSAction
 	client                 *http.Client
+	middlewares            []Middleware
 }
 
 func New() *ProxyServer {
@@ -36,6 +37,10 @@ func New() *ProxyServer {
 			},
 		},
 	}
+}
+
+func (p *ProxyServer) Use(ms ...Middleware) {
+	p.middlewares = append(p.middlewares, ms...)
 }
 
 func copyResponse(dst http.ResponseWriter, src *http.Response) error {
@@ -61,6 +66,13 @@ func (p *ProxyServer) pipeConn(dst, src *net.TCPConn) {
 	}
 	dst.CloseWrite()
 	src.CloseRead()
+}
+
+func (p *ProxyServer) apply(base Handler) Handler {
+	for _, m := range p.middlewares {
+		base = m(base)
+	}
+	return base
 }
 
 func (p *ProxyServer) proxyHTTPS(w http.ResponseWriter, r *http.Request) {
@@ -109,6 +121,7 @@ func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
 	defer rawCli.Close()
 	cliReader := bufio.NewReader(rawCli)
 	mitmTr := &http.Transport{TLSClientConfig: tlsConfig, Proxy: http.ProxyFromEnvironment}
+	handler := p.apply(DefaultHTTPSHandler(mitmTr))
 	for {
 		req, err := http.ReadRequest(cliReader)
 		if err != nil {
@@ -120,7 +133,7 @@ func (p *ProxyServer) mitmHTTPS(w http.ResponseWriter, r *http.Request) {
 		}
 		req.URL.Host = req.Host
 		req.URL.Scheme = "https"
-		resp, err := mitmTr.RoundTrip(req)
+		resp, err := handler(req)
 		if err != nil {
 			p.Logger.Print("failed to read TLS response: ", err)
 			break
@@ -174,7 +187,7 @@ func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := p.client.Do(proxyr)
+	resp, err := p.apply(DefaultHTTPHandler)(proxyr)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("ruest failed: %v", err), http.StatusBadGateway)
 		return
