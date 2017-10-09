@@ -114,7 +114,7 @@ func TestHTTPSManInTheMiddle(t *testing.T) {
 	}
 }
 
-func TestHTTPSRefuse(t *testing.T) {
+func TestHTTPSReject(t *testing.T) {
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		body, _ := ioutil.ReadAll(r.Body)
@@ -123,7 +123,7 @@ func TestHTTPSRefuse(t *testing.T) {
 	defer ts.Close()
 
 	proxy := New()
-	proxy.HTTPSAction = HTTPSActionRefuse
+	proxy.HTTPSAction = HTTPSActionReject
 	proxyserver := httptest.NewServer(proxy)
 	defer proxyserver.Close()
 	proxyurl, err := url.Parse(proxyserver.URL)
@@ -144,7 +144,7 @@ func TestHTTPSRefuse(t *testing.T) {
 	}
 }
 
-func TestRefuseNonProxyRequest(t *testing.T) {
+func TestRejectNonProxyRequest(t *testing.T) {
 	proxy := New()
 	proxyserver := httptest.NewServer(proxy)
 	defer proxyserver.Close()

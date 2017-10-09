@@ -16,7 +16,7 @@ type HTTPSAction int
 
 const (
 	HTTPSActionProxy HTTPSAction = iota
-	HTTPSActionRefuse
+	HTTPSActionReject
 	HTTPSActionMITM
 )
 
@@ -158,7 +158,7 @@ func (p *ProxyServer) connectHandler(w http.ResponseWriter, r *http.Request) {
 	switch p.HTTPSAction {
 	case HTTPSActionProxy:
 		p.proxyHTTPS(w, r)
-	case HTTPSActionRefuse:
+	case HTTPSActionReject:
 		http.Error(w, "HTTPS request is not allowed", http.StatusBadRequest)
 	case HTTPSActionMITM:
 		p.mitmHTTPS(w, r)
