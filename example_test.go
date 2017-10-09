@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func ExampleSimpleProxy() {
+func Example_SimpleProxy() {
 	// creating a new proxy server instance.
 	p := New()
 	// set HTTPS action (default: HTTPSActionProxy)
@@ -21,7 +21,7 @@ func ExampleSimpleProxy() {
 	// Output:
 }
 
-func ExampleMiddleware() {
+func Example_Middleware() {
 	p := New()
 	// define a middleware that recreates request handler based on the original handler (original handler performs just a proxy).
 	pathLogger := func(h Handler) Handler {
@@ -56,7 +56,7 @@ func ExampleMiddleware() {
 	// Hello!
 }
 
-func ExampleManInTheMiddle() {
+func Example_ManInTheMiddle() {
 	p := New()
 	// set HTTPSAction to HTTPSActionMITM, that enables man in the middle hijacking.
 	p.HTTPSAction = HTTPSActionMITM
