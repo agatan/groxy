@@ -62,7 +62,7 @@ func Example() {
 	// Hello!
 }
 
-func ExampleMiddleware() {
+func ExampleProxyServer_Use_mitm() {
 	p := New()
 	// set HTTPSAction to HTTPSActionMITM, that enables man in the middle hijacking.
 	p.HTTPSAction = HTTPSActionMITM
