@@ -14,6 +14,9 @@ func ExampleProxyServer() {
 	p := New()
 	// set HTTPS action (default: HTTPSActionProxy)
 	p.HTTPSAction = HTTPSActionProxy
+	// if you want to hijack https connection, you can use:
+	// p.HTTPSAction = HTTPSActionMITM
+
 	// ProxyServer implements http.Handler
 	proxyserver := httptest.NewServer(p)
 	defer proxyserver.Close()
@@ -59,10 +62,11 @@ func Example() {
 	// Hello!
 }
 
-func ExampleProxyServer_ManInTheMiddle() {
+func ExampleMiddleware() {
 	p := New()
 	// set HTTPSAction to HTTPSActionMITM, that enables man in the middle hijacking.
 	p.HTTPSAction = HTTPSActionMITM
+	// hijack request!
 	p.Use(func(h Handler) Handler {
 		return func(r *http.Request) (*http.Response, error) {
 			message := "hijack!"
