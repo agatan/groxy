@@ -189,7 +189,7 @@ func (p *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := p.apply(DefaultHTTPHandler)(proxyr)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("ruest failed: %v", err), http.StatusBadGateway)
+		http.Error(w, fmt.Sprintf("request failed: %v", err), http.StatusBadGateway)
 		return
 	}
 	defer resp.Body.Close()
