@@ -18,8 +18,8 @@ func TestHTTPProxy(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	proxy := New()
-	proxyserver := httptest.NewServer(proxy)
+	var proxy ProxyServer
+	proxyserver := httptest.NewServer(&proxy)
 	defer proxyserver.Close()
 	proxyurl, err := url.Parse(proxyserver.URL)
 	if err != nil {
@@ -49,8 +49,8 @@ func TestHTTPSProxy(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	proxy := New()
-	proxyserver := httptest.NewServer(proxy)
+	var proxy ProxyServer
+	proxyserver := httptest.NewServer(&proxy)
 	defer proxyserver.Close()
 	proxyurl, err := url.Parse(proxyserver.URL)
 	if err != nil {
@@ -85,9 +85,9 @@ func TestHTTPSManInTheMiddle(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	proxy := New()
+	var proxy ProxyServer
 	proxy.HTTPSAction = HTTPSActionMITM
-	proxyserver := httptest.NewServer(proxy)
+	proxyserver := httptest.NewServer(&proxy)
 	defer proxyserver.Close()
 	proxyurl, err := url.Parse(proxyserver.URL)
 	if err != nil {
@@ -122,9 +122,9 @@ func TestHTTPSReject(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	proxy := New()
+	var proxy ProxyServer
 	proxy.HTTPSAction = HTTPSActionReject
-	proxyserver := httptest.NewServer(proxy)
+	proxyserver := httptest.NewServer(&proxy)
 	defer proxyserver.Close()
 	proxyurl, err := url.Parse(proxyserver.URL)
 	if err != nil {
@@ -145,8 +145,8 @@ func TestHTTPSReject(t *testing.T) {
 }
 
 func TestRejectNonProxyRequest(t *testing.T) {
-	proxy := New()
-	proxyserver := httptest.NewServer(proxy)
+	var proxy ProxyServer
+	proxyserver := httptest.NewServer(&proxy)
 	defer proxyserver.Close()
 
 	resp, err := http.Get(proxyserver.URL)
@@ -160,12 +160,12 @@ func TestRejectNonProxyRequest(t *testing.T) {
 }
 
 func TestNonProxyRequestWithHandler(t *testing.T) {
-	proxy := New()
+	var proxy ProxyServer
 	reply := "Reply for non proxy requests"
 	proxy.NonProxyRequestHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(reply))
 	})
-	proxyserver := httptest.NewServer(proxy)
+	proxyserver := httptest.NewServer(&proxy)
 	defer proxyserver.Close()
 
 	resp, err := http.Get(proxyserver.URL)

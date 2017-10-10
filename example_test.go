@@ -11,9 +11,10 @@ import (
 
 func ExampleProxyServer() {
 	// creating a new proxy server instance.
-	p := New()
-	// set HTTPS action (default: HTTPSActionProxy)
-	p.HTTPSAction = HTTPSActionProxy
+	p := &ProxyServer{
+		// set HTTPS action (default: HTTPSActionProxy)
+		HTTPSAction: HTTPSActionProxy,
+	}
 	// if you want to hijack https connection, you can use:
 	// p.HTTPSAction = HTTPSActionMITM
 
@@ -26,9 +27,10 @@ func ExampleProxyServer() {
 
 func Example() {
 	// creating a new proxy server instance.
-	p := New()
-	// set HTTPS action (default: HTTPSActionProxy)
-	p.HTTPSAction = HTTPSActionProxy
+	p := &ProxyServer{
+		// set HTTPS action (default: HTTPSActionProxy)
+		HTTPSAction: HTTPSActionProxy,
+	}
 	// define a middleware that recreates request handler based on the original handler (original handler performs just a proxy).
 	pathLogger := func(h Handler) Handler {
 		return func(r *http.Request) (*http.Response, error) {
@@ -63,9 +65,10 @@ func Example() {
 }
 
 func ExampleProxyServer_Use_mitm() {
-	p := New()
-	// set HTTPSAction to HTTPSActionMITM, that enables man in the middle hijacking.
-	p.HTTPSAction = HTTPSActionMITM
+	p := &ProxyServer{
+		// set HTTPSAction to HTTPSActionMITM, that enables man in the middle hijacking.
+		HTTPSAction: HTTPSActionMITM,
+	}
 	// hijack request!
 	p.Use(func(h Handler) Handler {
 		return func(r *http.Request) (*http.Response, error) {

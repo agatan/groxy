@@ -27,12 +27,6 @@ type ProxyServer struct {
 	middlewares            []Middleware
 }
 
-func New() *ProxyServer {
-	return &ProxyServer{
-		Logger: nullLogger{},
-	}
-}
-
 func (p *ProxyServer) Use(ms ...Middleware) {
 	p.middlewares = append(p.middlewares, ms...)
 }

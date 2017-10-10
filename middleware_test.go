@@ -18,7 +18,7 @@ func TestHTTPProxyWithMiddleware(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	proxy := New()
+	var proxy ProxyServer
 	rewriteMessage := "rewrite"
 	proxy.Use(func(h Handler) Handler {
 		return func(req *http.Request) (*http.Response, error) {
@@ -28,7 +28,7 @@ func TestHTTPProxyWithMiddleware(t *testing.T) {
 			return h(req)
 		}
 	})
-	proxyserver := httptest.NewServer(proxy)
+	proxyserver := httptest.NewServer(&proxy)
 	defer proxyserver.Close()
 	proxyurl, err := url.Parse(proxyserver.URL)
 	if err != nil {
@@ -57,7 +57,7 @@ func TestHTTPSMitmWithMiddleware(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	proxy := New()
+	var proxy ProxyServer
 	rewriteMessage := "rewrite"
 	proxy.HTTPSAction = HTTPSActionMITM
 	proxy.Use(func(h Handler) Handler {
@@ -68,7 +68,7 @@ func TestHTTPSMitmWithMiddleware(t *testing.T) {
 			return h(req)
 		}
 	})
-	proxyserver := httptest.NewServer(proxy)
+	proxyserver := httptest.NewServer(&proxy)
 	defer proxyserver.Close()
 	proxyurl, err := url.Parse(proxyserver.URL)
 	if err != nil {
