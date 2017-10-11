@@ -31,11 +31,16 @@ func Example() {
 		// set HTTPS action (default: HTTPSActionProxy)
 		HTTPSAction: HTTPSActionProxy,
 	}
-	// define a middleware that recreates request handler based on the original handler (original handler performs just a proxy).
+	// define a middleware that recreates request handler based on the original handler (original handler performs as a proxy).
 	pathLogger := func(h Handler) Handler {
 		return func(r *http.Request) (*http.Response, error) {
 			fmt.Println(r.URL.Path)
-			return h(r)
+			resp, err := h(r)
+			if err != nil {
+				return nil, err
+			}
+			fmt.Println(resp.StatusCode)
+			return resp, nil
 		}
 	}
 	// set the middleware.
@@ -61,12 +66,13 @@ func Example() {
 
 	// Output:
 	// /foo/bar
+	// 200
 	// Hello!
 }
 
 func ExampleProxyServer_Use_mitm() {
 	p := &ProxyServer{
-		// set HTTPSAction to HTTPSActionMITM, that enables man in the middle hijacking.
+		// set HTTPSAction to HTTPSActionMITM, that enables Man in the middle hijacking.
 		HTTPSAction: HTTPSActionMITM,
 	}
 	// hijack request!

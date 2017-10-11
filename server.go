@@ -12,21 +12,31 @@ import (
 	"github.com/pkg/errors"
 )
 
+// HTTPSAction defines how to act for requests via HTTPS.
 type HTTPSAction int
 
 const (
+	// HTTPSActionProxy just performs as proxy server. In this behaviour, middlewares are ignored.
 	HTTPSActionProxy HTTPSAction = iota
+	// HTTPSActionReject rejects all HTTPS requests (returns http.StatusBadRequest).
 	HTTPSActionReject
+	// HTTPSActionMITM strips SSL encryption.
+	// Builtin certificates is not verified, so clients must accept insecure certificates.
 	HTTPSActionMITM
 )
 
+// ProxyServer is a programmable proxy server instance, behaves as an http.Handler.
 type ProxyServer struct {
-	Logger                 Logger
+	// Logger is a logger that prints proxy requests.
+	Logger Logger
+	// NonProxyRequestHandler handles non-proxy requests.
+	// If it's nil, non-proxy requests causes http.StatusBadRequest.
 	NonProxyRequestHandler http.Handler
 	HTTPSAction            HTTPSAction
 	middlewares            []Middleware
 }
 
+// Use adds given middlewares to p's middlewares.
 func (p *ProxyServer) Use(ms ...Middleware) {
 	p.middlewares = append(p.middlewares, ms...)
 }
