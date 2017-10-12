@@ -14,7 +14,7 @@ See `_example/` direcotry.
 ### Install
 
 ```
-$ go get github.com/agatan/bktree
+$ go get github.com/agatan/groxy
 ```
 
 ### Documentation
