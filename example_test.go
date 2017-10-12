@@ -1,6 +1,7 @@
 package groxy
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -71,43 +72,52 @@ func Example() {
 }
 
 func ExampleProxyServer_Use_mitm() {
-	p := &ProxyServer{
-		// set HTTPSAction to HTTPSActionMITM, that enables Man in the middle hijacking.
-		HTTPSAction: HTTPSActionMITM,
-	}
+	var p ProxyServer
+	p.HTTPSAction = HTTPSActionMITM
 	// hijack request!
 	p.Use(func(h Handler) Handler {
-		return func(r *http.Request) (*http.Response, error) {
+		return func(req *http.Request) (*http.Response, error) {
 			message := "hijack!"
-			r.Body.Close()
-			r.Body = ioutil.NopCloser(strings.NewReader(message))
-			r.ContentLength = int64(len(message))
-			return h(r)
+			body, _ := ioutil.ReadAll(req.Body)
+			fmt.Printf("original request: %v\n", string(body))
+			_ = req.Body.Close()
+			req.Body = ioutil.NopCloser(strings.NewReader(message))
+			req.ContentLength = int64(len(message))
+			return h(req)
 		}
 	})
 
-	proxyserver := httptest.NewServer(p)
+	proxyserver := httptest.NewServer(&p)
 	defer proxyserver.Close()
-	proxyurl, _ := url.Parse(proxyserver.URL)
+	proxyurl, err := url.Parse(proxyserver.URL)
+	if err != nil {
+		panic(err)
+	}
 
 	// setup a dummy echo server.
-	testserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testserver := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
 		body, _ := ioutil.ReadAll(r.Body)
-		r.Body.Close()
 		w.Write(body)
 	}))
 	defer testserver.Close()
 
 	// request via the proxy.
-	client := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyurl)}}
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy:           http.ProxyURL(proxyurl),
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
 	// Post `message!` to the server.
-	resp, _ := client.Post(testserver.URL, "", strings.NewReader("message!"))
+	resp, err := client.Post(testserver.URL+"/post", "application/json", strings.NewReader("message!"))
 	body, _ := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 
 	// if there are no proxy server, body is `message!`.
-	fmt.Println(string(body))
+	fmt.Printf("response: %v\n", string(body))
 
 	// Output:
-	// hijack!
+	// original request: message!
+	// response: hijack!
 }

@@ -20,11 +20,11 @@ func logging(h groxy.Handler) groxy.Handler {
 }
 
 func main() {
-	proxy := groxy.New()
+	var proxy groxy.ProxyServer
 	proxy.HTTPSAction = groxy.HTTPSActionMITM
 	proxy.Use(logging)
 
-	if err := http.ListenAndServe(":8888", proxy); err != nil {
+	if err := http.ListenAndServe(":8888", &proxy); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
